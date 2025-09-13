@@ -8,7 +8,9 @@ class CustomUserManager(BaseUserManager):
             raise ValueError('Email address is required')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)
+        if password:
+            user.set_password(password)
+            user.auth_provider = 'email'  # Set for email/password users
         user.save(using=self._db)
         return user
 
@@ -16,6 +18,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
+        extra_fields.setdefault("auth_provider", "email")
 
         if not extra_fields.get("is_staff") or not extra_fields.get("is_superuser"):
             raise ValueError("Superuser must have is_staff=True and is_superuser=True")
@@ -27,7 +30,16 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=255, blank=True)
     phone_number = models.CharField(max_length=15, blank=True)
     location = models.CharField(max_length=255, blank=True)
-    google_id = models.CharField(max_length=255, unique=True, null=True, blank=True)  # New: Link to Google sub ID
+    google_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    apple_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+
+    AUTH_METHOD_CHOICES = [
+        ('email', 'Email and Password'),
+        ('google', 'Google Account'),
+        ('apple', 'Apple Account'),
+    ]
+    auth_provider = models.CharField(max_length=50, choices=AUTH_METHOD_CHOICES, default='email', blank=True)
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_rider = models.BooleanField(default=False)
