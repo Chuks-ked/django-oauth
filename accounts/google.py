@@ -19,7 +19,6 @@ class Google:
                 'sub': idinfo['sub'],
                 'email': idinfo.get('email', ''),
                 'name': idinfo.get('name', ''),
-                'picture': idinfo.get('picture', ''),
                 'email_verified': idinfo.get('email_verified', False),
             }
         except ValueError as e:
