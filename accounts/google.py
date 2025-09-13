@@ -1,4 +1,4 @@
-from google.auth.transport import requests
+from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from django.conf import settings
 import logging
@@ -10,7 +10,7 @@ class Google:
     def validate(auth_token):
         try:
             idinfo = id_token.verify_oauth2_token(
-                auth_token, requests.Request(), audience=settings.GOOGLE_CLIENT_ID
+                auth_token, google_requests.Request(), audience=settings.GOOGLE_CLIENT_ID
             )
             if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
                 logger.error(f"Invalid issuer: {idinfo.get('iss')}")
