@@ -8,6 +8,7 @@ urlpatterns = [
     path('auth/login/', EmailTokenObtainPairView.as_view(), name='login'),
     path('auth/signup/', RegisterView.as_view(), name='signup'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/apple/', AppleSocialAuthView.as_view(), name='apple_auth'),
 ]
 
 # In project/urls.py: path('api/', include('accounts.urls')),
