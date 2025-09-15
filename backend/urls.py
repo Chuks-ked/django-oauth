@@ -21,9 +21,6 @@ from django.conf import settings
 from django.shortcuts import redirect
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
-admin.site.site_title = "DRF"
-admin.site.index_title = "DRF AUTH"
-
 
 def redirect_to_docs(request):
     return redirect('swagger-ui')
