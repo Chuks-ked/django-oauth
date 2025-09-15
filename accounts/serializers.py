@@ -9,34 +9,45 @@ from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError
 from .google import Google
+from .apple import Apple
 
 User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
-def register_social_user(provider, user_id, email, name):
+def register_social_user(provider, user_id, email, name=''):
     user = User.objects.filter(email=email).first()
     if user:
-        if user.auth_provider != 'google':
+        if user.auth_provider != provider:
             raise ValidationError(
-                'This email is registered with email/password. Please log in using your email and password.'
+                f'This email is registered with {user.auth_provider.capitalize()}. Please log in using {user.auth_provider.capitalize()}.'
             )
-        if user.google_id and user.google_id != user_id:
-            raise ValidationError(
-                'This email is linked to a different Google account.'
-            )
-        if not user.google_id:
+        if provider == 'google' and user.google_id and user.google_id != user_id:
+            raise ValidationError('This email is linked to a different Google account.')
+        if provider == 'apple' and user.apple_id and user.apple_id != user_id:
+            raise ValidationError('This email is linked to a different Apple account.')
+        if provider == 'google' and not user.google_id:
             user.google_id = user_id
+            user.name = name
+            user.save()
+        if provider == 'apple' and not user.apple_id:
+            user.apple_id = user_id
             user.name = name
             user.save()
         return user
 
+    extra_fields = {
+        'name': name,
+        'auth_provider': provider,
+        'is_active': True,
+    }
+    if provider == 'google':
+        extra_fields['google_id'] = user_id
+    elif provider == 'apple':
+        extra_fields['apple_id'] = user_id
     user = User.objects.create_user(
         email=email,
-        name=name,
-        google_id=user_id,
-        auth_provider='google',
-        is_active=True,
+        **extra_fields
     )
     return user
 
@@ -66,7 +77,40 @@ class GoogleSocialAuthSerializer(serializers.Serializer):
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         }
-    
+
+class AppleSocialAuthSerializer(serializers.Serializer):
+    auth_token = serializers.CharField()
+    full_name = serializers.JSONField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        id_token = attrs['auth_token']
+        user_data = Apple.validate(id_token)
+        if not user_data or not user_data.get('email_verified'):
+            raise serializers.ValidationError(
+                'The token is invalid, expired, or email not verified.'
+            )
+        user_id = user_data['sub']
+        email = user_data['email']
+        full_name = attrs.get('full_name')
+        name = ''
+        if full_name:
+            first_name = full_name.get('firstName', '')
+            last_name = full_name.get('lastName', '')
+            name = f"{first_name} {last_name}".strip()
+        user = register_social_user(
+            provider='apple', user_id=user_id, email=email, name=name
+        )
+        refresh = RefreshToken.for_user(user)
+        return {
+            'userId': user.id,
+            'user': {
+                'email': user.email,
+                'name': user.name,
+                'apple_id': user.apple_id,
+            },
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+        }
 
 class TokenResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
