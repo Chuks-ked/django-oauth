@@ -10,7 +10,8 @@ from .serializers import (
     GoogleSocialAuthSerializer,
     EmailTokenObtainPairSerializer,
     RegisterSerializer,
-    TokenResponseSerializer
+    TokenResponseSerializer, 
+    AppleSocialAuthSerializer
 )
 
 class APIResponse(Response):
@@ -78,6 +79,65 @@ class GoogleSocialAuthView(GenericAPIView):
             return APIResponse(
                 data=serializer.validated_data,
                 message="Google login successful",
+                status=status.HTTP_200_OK
+            )
+        return APIResponse(error=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AppleSocialAuthView(GenericAPIView):
+    serializer_class = AppleSocialAuthSerializer
+    permission_classes = []
+
+    @extend_schema(
+        request=AppleSocialAuthSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=TokenResponseSerializer,
+                description="Successful Apple OAuth login",
+                examples=[
+                    OpenApiExample(
+                        name="SuccessExample",
+                        value={
+                            "status": "success",
+                            "message": "Apple login successful",
+                            "data": {
+                                "userId": 0,
+                                "user": {
+                                    "email": "string",
+                                    "name": "string",
+                                    "apple_id": "string"
+                                },
+                                "access": "string",
+                                "refresh": "string"
+                            },
+                            "error": None
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                response=TokenResponseSerializer,
+                description="Invalid or expired token",
+                examples=[
+                    OpenApiExample(
+                        name="ErrorExample",
+                        value={
+                            "status": "error",
+                            "message": "Invalid token",
+                            "data": {},
+                            "error": {"detail": "string"}
+                        }
+                    )
+                ]
+            )
+        },
+        description="Authenticate user with Apple OAuth ID token"
+    )
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            return APIResponse(
+                data=serializer.validated_data,
+                message="Apple login successful",
                 status=status.HTTP_200_OK
             )
         return APIResponse(error=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
